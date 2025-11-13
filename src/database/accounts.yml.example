@@ -1,0 +1,26 @@
+# Copy this file to accounts.yml and fill in your actual account details
+
+accounts:
+  # Example: Debit account
+  - bank: Bank Name
+    type: Debit
+    currency: USD
+    number: "****1234"
+    balance: 0
+    credit_limit: 0
+
+  # Example: Credit card
+  - bank: Bank Name
+    type: Credit
+    currency: USD
+    number: "****5678"
+    balance: 0
+    credit_limit: 5000
+
+  # Example: Foreign currency account
+  - bank: Another Bank
+    type: Debit
+    currency: CLP
+    number: "****9012"
+    balance: 0
+    credit_limit: 0
