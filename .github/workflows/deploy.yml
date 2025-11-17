@@ -1,13 +1,13 @@
 name: Auto-deploy to Pi
-   on:
-     push:
-       branches: [main]
-   jobs:
-     notify:
-       runs-on: ubuntu-latest
-       steps:
+on:
+   push:
+      branches: [main]
+jobs:
+   notify:
+      runs-on: ubuntu-latest
+      steps:
          - name: Send update command to Discord
            run: |
-             curl -X POST "${{ secrets.WEBHOOK_URL }}" \
-               -H "Content-Type: application/json" \
-               -d '{"content": "!deploy"}'
+            curl -X POST "${{ secrets.WEBHOOK_URL }}" \
+             -H "Content-Type: application/json" \
+             -d '{"content": "!deploy"}'
