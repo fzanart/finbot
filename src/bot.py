@@ -1,8 +1,11 @@
 "fin bot"
 
 import os
+import sys
+import subprocess
 import logging
 from datetime import datetime
+import yaml
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv, find_dotenv
@@ -22,6 +25,10 @@ intents.message_content = True
 intents.members = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
+
+with open("src/database/accounts.yml", "r") as f:
+    accounts = yaml.safe_load(f)
+    CARD_MAPPING = accounts["card_mapping"]
 
 
 @bot.event
@@ -52,6 +59,12 @@ async def on_message(message):
     if message.author == bot.user:
         return
 
+        # Update command
+    if message.content.strip() == "!deploy":
+        await message.channel.send("Pulling latest code and restarting...")
+        subprocess.run(["git", "pull", "origin", "main"], cwd="/opt/finbot")
+        os.execv(sys.executable, [sys.executable] + sys.argv)
+
     # Detect webhook transactions
     if "💳 **New Transaction**" in message.content:
         lines = message.content.split("\n")
@@ -59,9 +72,11 @@ async def on_message(message):
         amount = float(lines[2].split("$")[1])
         merchant = lines[3].split("**Merchant:** ")[1]
         details = lines[4].split("**Details:** ")[1]
-        account_id = int(lines[5].split("**Account:** ")[1])
+        account_id = lines[5].split("**Account:** ")[1]
 
-        txn_id = save_transaction(date, amount, merchant, details, account_id)
+        account_number = CARD_MAPPING.get(account_id, "Unknown")
+
+        txn_id = save_transaction(date, amount, merchant, details, account_number)
         await message.reply(f"✅ Transaction saved with ID: **{txn_id}**")
 
     await bot.process_commands(message)
