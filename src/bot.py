@@ -74,7 +74,7 @@ async def on_message(message):
         details = lines[4].split("**Details:** ")[1]
         account_id = lines[5].split("**Account:** ")[1]
 
-        account_number = CARD_MAPPING.get(account_id, "Unknown")
+        account_number = CARD_MAPPING.get(account_id.lower(), "Unknown")
 
         txn_id = save_transaction(date, amount, merchant, details, account_number)
         await message.reply(f"✅ Transaction saved with ID: **{txn_id}**")
