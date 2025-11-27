@@ -2,6 +2,7 @@
 
 import os
 import sys
+import json
 import subprocess
 import logging
 from datetime import datetime
@@ -14,6 +15,7 @@ from database.db_operations import (
     delete_transaction,
     update_transaction,
 )
+from LlmsOperations import parse_mail_message
 
 
 load_dotenv(find_dotenv())
@@ -59,7 +61,7 @@ async def on_message(message):
     if message.author == bot.user:
         return
 
-        # Update command
+    # Code update command
     if message.content.strip() == "!deploy":
         await message.channel.send("Pulling latest code and restarting...")
         subprocess.run(["git", "pull", "origin", "main"], cwd="/opt/finbot")
@@ -105,6 +107,26 @@ async def update(ctx, txn_id: int, field: str, *, value: str):
         await ctx.reply(f"✅ Transaction {txn_id} updated: **{field}** = {value}")
     except ValueError as e:
         await ctx.reply(f"❌ {str(e)}")
+
+
+@bot.command()
+async def parse_email(ctx, message_id: str, *, message_content: str):
+    """Parse email message: !parse_email 19abacc9a8b5ee7b .... message content ...."""
+    try:
+        r = json.loads(parse_mail_message(message_content))
+
+        txn_id = save_transaction(
+            r.get("date"),
+            float(r.get("amount")),
+            r.get("merchant"),
+            f"{message_id} - {r.get('details')}",
+            r.get("account"),
+        )
+
+        await ctx.reply(f"✅ Email parsed and transaction saved with ID: **{txn_id}**")
+
+    except Exception as e:
+        await ctx.reply(f"❌ Error parsing email: {str(e)}")
 
 
 bot.run(token, log_handler=handler, log_level=logging.DEBUG)
