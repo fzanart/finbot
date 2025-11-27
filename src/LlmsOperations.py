@@ -6,6 +6,9 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 from google import genai
 from google.genai import types
+from dotenv import load_dotenv, find_dotenv
+
+load_dotenv(find_dotenv())
 
 # Determine the project root directory dynamically
 # This will be /path/to/finbot
