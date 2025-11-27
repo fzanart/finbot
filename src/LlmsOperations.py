@@ -1,10 +1,20 @@
 """Module for parsing email messages using LLMs to extract transaction data."""
 
+import os
 import logging
 from pathlib import Path
 from pydantic import BaseModel, Field
 from google import genai
 from google.genai import types
+
+# Determine the project root directory dynamically
+# This will be /path/to/finbot
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+log_directory = os.path.join(project_root, "logfiles")
+
+# Ensure the log directory exists
+if not os.path.exists(log_directory):
+    os.makedirs(log_directory)
 
 
 # Configure logging
