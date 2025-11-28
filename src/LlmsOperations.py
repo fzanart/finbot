@@ -41,8 +41,14 @@ class Transaction(BaseModel):
     account: str = Field(description="Account number or identifier")
 
 
+def get_prompt(filename):
+    """Constructs a path to the prompts directory and reads a prompt file."""
+    prompt_path = Path(__file__).parent.parent / "prompts" / filename
+    return prompt_path.read_text(encoding="utf-8")
+
+
 def parse_mail_message(message):
-    """Parses an email message to extract transaction data using a Gemini model with structured output.
+    """Parses an email message to extract transaction data with structured output.
 
     Args:
         message (str): The content of the email message.
@@ -50,14 +56,10 @@ def parse_mail_message(message):
     Returns:
         str: The parsed transaction data in JSON format.
     """
-    system_instruction = Path("prompts/mail_parser_system.md").read_text(
-        encoding="utf-8"
-    )
+    system_instruction = get_prompt("mail_parser_system.md")
 
-    user_message = (
-        Path("prompts/mail_parser_user.md")
-        .read_text(encoding="utf-8")
-        .format(message=message, format="JSON")
+    user_message = get_prompt("mail_parser_user.md").format(
+        message=message, format="JSON"
     )
 
     # Define the JSON schema using Pydantic
