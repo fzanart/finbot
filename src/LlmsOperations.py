@@ -43,7 +43,7 @@ class Transaction(BaseModel):
 
 def get_prompt(filename):
     """Constructs a path to the prompts directory and reads a prompt file."""
-    prompt_path = Path(__file__).parent.parent / "prompts" / filename
+    prompt_path = Path(__file__).parent / "prompts" / filename
     return prompt_path.read_text(encoding="utf-8")
 
 
