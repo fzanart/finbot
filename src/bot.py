@@ -67,6 +67,15 @@ async def on_message(message):
         subprocess.run(["git", "pull", "origin", "main"], cwd="/opt/finbot")
         os.execv(sys.executable, [sys.executable] + sys.argv)
 
+    if message.content.startswith("!parse_email"):
+        try:
+            command_line, email_body = message.content.split("\n", 1)
+            message_id = command_line.split()[1]
+            await process_and_save_email(message, message_id, email_body)
+        except Exception as e:
+            await message.reply(f"❌ Error processing webhook email: {str(e)}")
+        return
+
     # Detect webhook transactions
     if "💳 **New Transaction**" in message.content:
         lines = message.content.split("\n")
@@ -109,9 +118,8 @@ async def update(ctx, txn_id: int, field: str, *, value: str):
         await ctx.reply(f"❌ {str(e)}")
 
 
-@bot.command()
-async def parse_email(ctx, message_id: str, *, message_content: str):
-    """Parse email message: !parse_email 19abacc9a8b5ee7b .... message content ...."""
+async def process_and_save_email(reply_target, message_id: str, message_content: str):
+    """Helper function to parse, save, and reply for an email message."""
     try:
         r = json.loads(parse_mail_message(message_content))
 
@@ -123,10 +131,18 @@ async def parse_email(ctx, message_id: str, *, message_content: str):
             r.get("account"),
         )
 
-        await ctx.reply(f"✅ Email parsed and transaction saved with ID: **{txn_id}**")
+        await reply_target.reply(
+            f"✅ Email parsed and transaction saved with ID: **{txn_id}**"
+        )
 
     except Exception as e:
-        await ctx.reply(f"❌ Error parsing email: {str(e)}")
+        await reply_target.reply(f"❌ Error parsing email: {str(e)}")
+
+
+@bot.command()
+async def parse_email(ctx, message_id: str, *, message_content: str):
+    """Parse email message: !parse_email 19abacc9a8b5ee7b .... message content ...."""
+    await process_and_save_email(ctx, message_id, message_content)
 
 
 bot.run(token, log_handler=handler, log_level=logging.DEBUG)
