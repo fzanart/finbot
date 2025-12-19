@@ -5,6 +5,7 @@ import sys
 import json
 import subprocess
 import logging
+from time import time
 from datetime import datetime
 import yaml
 import discord
@@ -14,6 +15,7 @@ from database.db_operations import (
     save_transaction,
     delete_transaction,
     update_transaction,
+    get_monthly_expenses_by_source,
 )
 from LlmsOperations import parse_mail_message
 
@@ -38,24 +40,6 @@ async def on_ready():
     print(f"We are ready to go in, {bot.user.name}")
 
 
-# @bot.event
-# async def on_message(message):
-#     if message.author == bot.user:
-#         return
-
-#     if "shit" in message.content.lower():
-#         await message.delete()
-#         await message.channel.send(f"{message.author.mention} - dont use that word!")
-
-#     await bot.process_commands(message)
-
-
-# # !hello
-# @bot.command()
-# async def hello(ctx):
-#     await ctx.send(f"Hello {ctx.author.mention}!")
-
-
 @bot.event
 async def on_message(message):
     if message.author == bot.user:
@@ -78,26 +62,42 @@ async def on_message(message):
 
     # Detect webhook transactions
     if "💳 **New Transaction**" in message.content:
-        lines = message.content.split("\n")
-        date = lines[1].split("**Date:** ")[1]
-        amount = float(lines[2].split("$")[1])
-        merchant = lines[3].split("**Merchant:** ")[1]
-        details = lines[4].split("**Details:** ")[1]
-        account_id = lines[5].split("**Account:** ")[1]
 
-        account_number = CARD_MAPPING.get(account_id.lower(), "Unknown")
+        txn = parse_wallet_transaction(message.content)
 
-        txn_id = save_transaction(date, amount, merchant, details, account_number)
-        await message.reply(f"✅ Transaction saved with ID: **{txn_id}**")
+        account_number = CARD_MAPPING.get(txn["account_id"].lower(), "Unknown")
+        txn["account_id"] = account_number
+
+        txn_id = save_transaction(**txn)
+        expenses = get_monthly_expenses_by_source()
+        await message.reply(
+            f"✅ Transaction saved with ID: **{txn_id}**\n"
+            f"Webhook total expenses: **${expenses.get('webhook', 0):,d}**\n"
+            f"Email total expenses: **${expenses.get('email', 0):,d}**"
+        )
 
     await bot.process_commands(message)
+
+
+def parse_wallet_transaction(content: str) -> dict:
+    lines = content.splitlines()
+    get = lambda i: lines[i].partition("** ")[2]
+
+    return {
+        "date": get(1),
+        "amount": float(get(2).lstrip("$")),
+        "merchant": get(3),
+        "details": get(4),
+        "account_id": get(5),
+        "source": "webhook",
+    }
 
 
 @bot.command()
 async def add(ctx, amount: float, merchant: str, *, details: str, account_id: int):
     """Add manual transaction: !add 50 Costco groceries"""
     date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    txn_id = save_transaction(date, amount, merchant, details, account_id)
+    txn_id = save_transaction(date, amount, merchant, details, account_id, "manual")
     await ctx.reply(f"✅ Manual transaction saved with ID: **{txn_id}**")
 
 
@@ -122,13 +122,20 @@ async def process_and_save_email(reply_target, message_id: str, message_content:
     """Helper function to parse, save, and reply for an email message."""
     try:
         r = json.loads(parse_mail_message(message_content))
+        amount = float(r.get("amount"))
+        if amount == 0:
+            await reply_target.reply(
+                f"❌ Email transaction disregarded as amount is 0 - Details: {r.get('details')}"
+            )
+            return
 
         txn_id = save_transaction(
             r.get("date"),
-            float(r.get("amount")),
+            amount,
             r.get("merchant"),
             f"{message_id} - {r.get('details')}",
             r.get("account"),
+            "email",
         )
 
         await reply_target.reply(
